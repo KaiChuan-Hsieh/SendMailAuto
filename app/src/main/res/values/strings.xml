@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">SendMailAuto</string>
+    <string name="username">username</string>
+    <string name="password">password</string>
+    <string name="recipient">recipient@gmail.com</string>
+    <string name="subject">Please input mail subject</string>
+    <string name="message">Please input mail content</string>
+    <string name="dialog_title">Configuration</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
 </resources>
