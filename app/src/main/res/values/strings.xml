@@ -8,4 +8,6 @@
     <string name="dialog_title">Configuration</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="action_add">ADD</string>
+    <string name="delete">Delete</string>
 </resources>

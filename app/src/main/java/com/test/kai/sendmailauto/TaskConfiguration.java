@@ -100,8 +100,8 @@ public class TaskConfiguration {
 
     @Override
     public String toString() {
-        return this.recipient + "\n" + this.subject + "\n" +
-                this.year + "-" + (this.month+1) + "-" + this.day + " " +
+        return "Recipient: " + this.recipient + "\n" + "Subject: "+ this.subject + "\n" +
+               "Launch at: " + this.year + "-" + (this.month+1) + "-" + this.day + " " +
                 fixup(this.hour) + ":" + fixup(this.minute);
     }
 

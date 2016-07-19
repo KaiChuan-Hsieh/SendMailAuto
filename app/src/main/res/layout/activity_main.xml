@@ -9,9 +9,10 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.test.kai.sendmailauto.MainActivity">
 
-    <TextView
-        android:id="@+id/additem"
+    <ListView
+        android:id="@+id/tasklist"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Add Item"/>
+        android:layout_height="wrap_content">
+
+    </ListView>
 </RelativeLayout>
