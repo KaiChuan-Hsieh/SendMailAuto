@@ -1,5 +1,7 @@
 package com.test.kai.sendmailauto;
 
+import android.util.Log;
+
 import java.util.Properties;
 
 import javax.mail.Address;
@@ -22,7 +24,7 @@ public class GmailSender {
     private String subject;
     private String content;
 
-    GmailSender (String user, String pass, String recv, String sub, String con) {
+    public GmailSender (String user, String pass, String recv, String sub, String con) {
         username = user;
         password = pass;
         recipient = recv;
@@ -30,7 +32,12 @@ public class GmailSender {
         content = con;
     }
 
-    void sendMailViaTLS() {
+    public void send() {
+        Thread thr = new Thread(sendThread);
+        thr.start();
+    }
+
+    private void sendMailViaTLS() {
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
@@ -51,7 +58,7 @@ public class GmailSender {
         }
     }
 
-    void sendMailViaSSL() {
+    private void sendMailViaSSL() {
         Properties props = new Properties();
         props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.smtp.socketFactory.port", "465");
@@ -83,4 +90,17 @@ public class GmailSender {
         message.setText(content);
         return message;
     }
+
+    Runnable sendThread = new Runnable() {
+        @Override
+        public void run() {
+            Log.i(TAG, "mail send start");
+            try {
+                sendMailViaTLS();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            Log.i(TAG, "mail send end");
+        }
+    };
 }

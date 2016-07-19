@@ -2,9 +2,16 @@ package com.test.kai.sendmailauto;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.PowerManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -22,17 +29,33 @@ import android.widget.ListView;
 import android.widget.TimePicker;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
     final private String TAG = "SendMailAuto";
+    final private String ACTION_PROCESS_TASK = "action.process.task";
     private TaskManager mTaskManager;
     private ListView mListTasks;
+    private PowerManager pm;
+    private PowerManager.WakeLock wakeLock;
+    private IntentFilter intentFilter;
 
     // Storage Permissions
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
     private static String[] PERMISSIONS_STORAGE = {
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+
+    private final BroadcastReceiver mAlarmReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (ACTION_PROCESS_TASK.equals(action)) {
+                Log.i(TAG, "recieve " + action);
+                handleTask();
+            }
+        }
     };
 
     @Override
@@ -42,7 +65,11 @@ public class MainActivity extends AppCompatActivity {
         verifyStoragePermissions(MainActivity.this);
         mTaskManager = new TaskManager(getApplicationContext());
         mListTasks = (ListView)findViewById(R.id.tasklist);
-        updateTaskList();
+        intentFilter = new IntentFilter(ACTION_PROCESS_TASK);
+        pm = (PowerManager) getSystemService(POWER_SERVICE);
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
+        registerReceiver(mAlarmReceiver, intentFilter);
+        handleTask();
     }
 
     /**
@@ -118,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, taskConfiguration.toString());
                 mTaskManager.addTaskConfiguration(taskConfiguration);
                 mTaskManager.saveTaskConfigurations();
-                updateTaskList();
+                handleTask();
             }
         });
         builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -176,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, "delete selected");
                 mTaskManager.removeTaskConfiguration(id);
                 mTaskManager.saveTaskConfigurations();
-                updateTaskList();
+                handleTask();
             }
         });
         builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -188,5 +215,38 @@ public class MainActivity extends AppCompatActivity {
         });
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    public void setAlarm(Calendar cal) {
+        Calendar current = Calendar.getInstance();
+        if (cal.compareTo(current)<=0) {
+            Log.i(TAG, "time passed");
+            ArrayList<TaskConfiguration> taskConfigurations = mTaskManager.getTaskConfigurations();
+            if (!taskConfigurations.isEmpty())
+                handleTask();
+        } else {
+            AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+            Intent intent = new Intent();
+            intent.setAction(ACTION_PROCESS_TASK);
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0,
+                    intent, PendingIntent.FLAG_CANCEL_CURRENT);
+            alarmManager.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pendingIntent);
+        }
+    }
+
+    public void handleTask() {
+        synchronized (this) {
+            if (!wakeLock.isHeld())
+                wakeLock.acquire();
+            Log.i(TAG, "wakelock acquired");
+            mTaskManager.flushAllTimePassedTask();
+            mTaskManager.saveTaskConfigurations();
+            Calendar nextTime = mTaskManager.getNextTaskTime();
+            setAlarm(nextTime);
+            updateTaskList();
+            Log.i(TAG, "wakelock released");
+            if (wakeLock.isHeld())
+                wakeLock.release();
+        }
     }
 }

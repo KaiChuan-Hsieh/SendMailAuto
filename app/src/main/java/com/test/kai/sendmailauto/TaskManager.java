@@ -2,6 +2,7 @@ package com.test.kai.sendmailauto;
 
 import android.content.Context;
 import android.os.Environment;
+import android.transition.ChangeImageTransform;
 import android.util.Log;
 import android.util.Xml;
 
@@ -20,6 +21,8 @@ import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Iterator;
 
 /**
  * Created by kai-chuan on 7/19/16.
@@ -249,5 +252,40 @@ public class TaskManager {
 
     public void removeTaskConfiguration(int index) {
         taskConfigurations.remove(index);
+    }
+
+    public void flushAllTimePassedTask() {
+        Calendar current = Calendar.getInstance();
+        for (Iterator<TaskConfiguration> it=taskConfigurations.iterator(); it.hasNext();) {
+            TaskConfiguration t = it.next();
+            Calendar curTask = Calendar.getInstance();
+            curTask.set(t.getYear(), t.getMonth(), t.getDay(), t.getHour(), t.getMinute());
+            if (curTask.compareTo(current)<=0) {
+                //Time is passed
+                GmailSender sender = new GmailSender(t.getUsername(), t.getPassword(),
+                        t.getRecipient(), t.getSubject(), t.getMessage());
+                sender.send();
+                it.remove();
+            }
+        }
+    }
+
+    public Calendar getNextTaskTime() {
+        Calendar current = Calendar.getInstance();
+        int diff = Integer.MAX_VALUE;
+        TaskConfiguration minTask = null;
+        for (TaskConfiguration t : taskConfigurations) {
+            Calendar curTask = Calendar.getInstance();
+            curTask.set(t.getYear(), t.getMonth(), t.getDay(), t.getHour(), t.getMinute());
+            if (curTask.compareTo(current)<diff) {
+                minTask = t;
+                diff = curTask.compareTo(current);
+            }
+        }
+        if (minTask!=null) {
+            current.set(minTask.getYear(), minTask.getMonth(), minTask.getDay(),
+                    minTask.getHour(), minTask.getMinute());
+        }
+        return current;
     }
 }
