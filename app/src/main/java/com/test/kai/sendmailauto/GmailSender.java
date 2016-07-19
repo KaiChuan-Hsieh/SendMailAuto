@@ -1,7 +1,12 @@
 package com.test.kai.sendmailauto;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.PowerManager;
 import android.util.Log;
 
+import java.net.InetAddress;
 import java.util.Properties;
 
 import javax.mail.Address;
@@ -23,8 +28,12 @@ public class GmailSender {
     private String recipient;
     private String subject;
     private String content;
+    private PowerManager pm;
+    private PowerManager.WakeLock wakeLock;
+    private Context mContext;
 
-    public GmailSender (String user, String pass, String recv, String sub, String con) {
+    public GmailSender (Context context, String user, String pass, String recv, String sub, String con) {
+        mContext = context;
         username = user;
         password = pass;
         recipient = recv;
@@ -33,6 +42,8 @@ public class GmailSender {
     }
 
     public void send() {
+        pm = (PowerManager) mContext.getSystemService(mContext.POWER_SERVICE);
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
         Thread thr = new Thread(sendThread);
         thr.start();
     }
@@ -96,7 +107,11 @@ public class GmailSender {
         public void run() {
             Log.i(TAG, "mail send start");
             try {
+                if (!wakeLock.isHeld()) wakeLock.acquire();
+                Log.i(TAG, "wakelock acquired");
                 sendMailViaTLS();
+                if (wakeLock.isHeld()) wakeLock.release();
+                Log.i(TAG, "wakelock released");
             } catch (Exception e) {
                 e.printStackTrace();
             }

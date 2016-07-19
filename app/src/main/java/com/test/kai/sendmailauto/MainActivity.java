@@ -11,6 +11,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
 import android.os.PowerManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -32,8 +33,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
-    final private String TAG = "SendMailAuto";
-    final private String ACTION_PROCESS_TASK = "action.process.task";
+    private final String TAG = "SendMailAuto";
+    private final String ACTION_PROCESS_TASK = "action.process.task";
     private TaskManager mTaskManager;
     private ListView mListTasks;
     private PowerManager pm;
@@ -53,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
             String action = intent.getAction();
             if (ACTION_PROCESS_TASK.equals(action)) {
                 Log.i(TAG, "recieve " + action);
-                handleTask();
+                handleTasks();
             }
         }
     };
@@ -69,9 +70,27 @@ public class MainActivity extends AppCompatActivity {
         pm = (PowerManager) getSystemService(POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
         registerReceiver(mAlarmReceiver, intentFilter);
-        handleTask();
+        handleTasks();
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.action_add:
+                showTaskConfigureDialog();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
     /**
      * Checks if the app has permission to write to device storage
      *
@@ -93,22 +112,52 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_main, menu);
-        return true;
+    public void handleTasks() {
+        synchronized (this) {
+            int ret = 0;
+            if (!wakeLock.isHeld())
+                wakeLock.acquire();
+            Log.i(TAG, "wakelock acquired");
+            mTaskManager.flushAllTimePassedTask();
+            mTaskManager.saveTaskConfigurations();
+            updateTaskList();
+            Calendar nextTime = mTaskManager.getNextTaskTime();
+            setAlarm(nextTime);
+            if (wakeLock.isHeld())
+                wakeLock.release();
+            Log.i(TAG, "wakelock released");
+        }
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle item selection
-        switch (item.getItemId()) {
-            case R.id.action_add:
-                showTaskConfigureDialog();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
+    public void updateTaskList() {
+        final ArrayList<TaskConfiguration> taskConfigurations = mTaskManager.getTaskConfigurations();
+        ArrayAdapter<TaskConfiguration> arrayAdapter = new ArrayAdapter<TaskConfiguration>(MainActivity.this,
+                R.layout.list_item, taskConfigurations);
+        mListTasks.setAdapter(arrayAdapter);
+        mListTasks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                showTaskDialog(i);
+            }
+        });
+    }
+
+    public void setAlarm(Calendar cal) {
+        Calendar current = Calendar.getInstance();
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        Intent intent = new Intent();
+        intent.setAction(ACTION_PROCESS_TASK);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0,
+                intent, PendingIntent.FLAG_CANCEL_CURRENT);
+        if (cal.compareTo(current)<=0) {
+            Log.i(TAG, "time passed");
+            ArrayList<TaskConfiguration> taskConfigurations = mTaskManager.getTaskConfigurations();
+            if (!taskConfigurations.isEmpty())
+                handleTasks();
+            else
+                alarmManager.cancel(pendingIntent);
+        } else {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pendingIntent);
         }
     }
 
@@ -144,8 +193,7 @@ public class MainActivity extends AppCompatActivity {
                                 username, password, recipient, subject, message);
                 Log.i(TAG, taskConfiguration.toString());
                 mTaskManager.addTaskConfiguration(taskConfiguration);
-                mTaskManager.saveTaskConfigurations();
-                handleTask();
+                handleTasks();
             }
         });
         builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -156,19 +204,6 @@ public class MainActivity extends AppCompatActivity {
         });
         AlertDialog dialog = builder.create();
         dialog.show();
-    }
-
-    public void updateTaskList() {
-        final ArrayList<TaskConfiguration> taskConfigurations = mTaskManager.getTaskConfigurations();
-        ArrayAdapter<TaskConfiguration> arrayAdapter = new ArrayAdapter<TaskConfiguration>(MainActivity.this,
-                R.layout.list_item, taskConfigurations);
-        mListTasks.setAdapter(arrayAdapter);
-        mListTasks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                showTaskDialog(i);
-            }
-        });
     }
 
     public void showTaskDialog(int taskId) {
@@ -202,8 +237,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(DialogInterface dialogInterface, int i) {
                 Log.i(TAG, "delete selected");
                 mTaskManager.removeTaskConfiguration(id);
-                mTaskManager.saveTaskConfigurations();
-                handleTask();
+                handleTasks();
             }
         });
         builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -215,38 +249,5 @@ public class MainActivity extends AppCompatActivity {
         });
         AlertDialog dialog = builder.create();
         dialog.show();
-    }
-
-    public void setAlarm(Calendar cal) {
-        Calendar current = Calendar.getInstance();
-        if (cal.compareTo(current)<=0) {
-            Log.i(TAG, "time passed");
-            ArrayList<TaskConfiguration> taskConfigurations = mTaskManager.getTaskConfigurations();
-            if (!taskConfigurations.isEmpty())
-                handleTask();
-        } else {
-            AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
-            Intent intent = new Intent();
-            intent.setAction(ACTION_PROCESS_TASK);
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0,
-                    intent, PendingIntent.FLAG_CANCEL_CURRENT);
-            alarmManager.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pendingIntent);
-        }
-    }
-
-    public void handleTask() {
-        synchronized (this) {
-            if (!wakeLock.isHeld())
-                wakeLock.acquire();
-            Log.i(TAG, "wakelock acquired");
-            mTaskManager.flushAllTimePassedTask();
-            mTaskManager.saveTaskConfigurations();
-            Calendar nextTime = mTaskManager.getNextTaskTime();
-            setAlarm(nextTime);
-            updateTaskList();
-            Log.i(TAG, "wakelock released");
-            if (wakeLock.isHeld())
-                wakeLock.release();
-        }
     }
 }

@@ -2,7 +2,6 @@ package com.test.kai.sendmailauto;
 
 import android.content.Context;
 import android.os.Environment;
-import android.transition.ChangeImageTransform;
 import android.util.Log;
 import android.util.Xml;
 
@@ -11,7 +10,6 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmlpull.v1.XmlSerializer;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -28,9 +26,9 @@ import java.util.Iterator;
  * Created by kai-chuan on 7/19/16.
  */
 public class TaskManager {
-    final private String TAG = "TaskManager";
-    final private String TASK_DATA_XML = "taskdata.xml";
-    final private int INPUT_BUFFER_SIZE = 2048;
+    private final String TAG = "TaskManager";
+    private final String TASK_DATA_XML = "taskdata.xml";
+    private final int INPUT_BUFFER_SIZE = 2048;
     private Context mContext;
     private ArrayList<TaskConfiguration> taskConfigurations;
 
@@ -38,10 +36,6 @@ public class TaskManager {
         mContext = context;
         taskConfigurations = new ArrayList<TaskConfiguration>();
         syncTaskConfigurations();
-    }
-
-    public ArrayList<TaskConfiguration> getTaskConfigurations() {
-        return taskConfigurations;
     }
 
     private void syncTaskConfigurations() {
@@ -188,8 +182,16 @@ public class TaskManager {
         return taskConfiguration;
     }
 
+    public ArrayList<TaskConfiguration> getTaskConfigurations() {
+        return taskConfigurations;
+    }
+
     public void addTaskConfiguration(TaskConfiguration taskConfiguration) {
         taskConfigurations.add(taskConfiguration);
+    }
+
+    public void removeTaskConfiguration(int index) {
+        taskConfigurations.remove(index);
     }
 
     public void saveTaskConfigurations() {
@@ -250,26 +252,6 @@ public class TaskManager {
         }
     }
 
-    public void removeTaskConfiguration(int index) {
-        taskConfigurations.remove(index);
-    }
-
-    public void flushAllTimePassedTask() {
-        Calendar current = Calendar.getInstance();
-        for (Iterator<TaskConfiguration> it=taskConfigurations.iterator(); it.hasNext();) {
-            TaskConfiguration t = it.next();
-            Calendar curTask = Calendar.getInstance();
-            curTask.set(t.getYear(), t.getMonth(), t.getDay(), t.getHour(), t.getMinute());
-            if (curTask.compareTo(current)<=0) {
-                //Time is passed
-                GmailSender sender = new GmailSender(t.getUsername(), t.getPassword(),
-                        t.getRecipient(), t.getSubject(), t.getMessage());
-                sender.send();
-                it.remove();
-            }
-        }
-    }
-
     public Calendar getNextTaskTime() {
         Calendar current = Calendar.getInstance();
         int diff = Integer.MAX_VALUE;
@@ -287,5 +269,21 @@ public class TaskManager {
                     minTask.getHour(), minTask.getMinute());
         }
         return current;
+    }
+
+    public void flushAllTimePassedTask() {
+        Calendar current = Calendar.getInstance();
+        for (Iterator<TaskConfiguration> it=taskConfigurations.iterator(); it.hasNext();) {
+            TaskConfiguration t = it.next();
+            Calendar curTask = Calendar.getInstance();
+            curTask.set(t.getYear(), t.getMonth(), t.getDay(), t.getHour(), t.getMinute());
+            if (curTask.compareTo(current)<=0) {
+                //Time is passed
+                GmailSender sender = new GmailSender(mContext, t.getUsername(), t.getPassword(),
+                        t.getRecipient(), t.getSubject(), t.getMessage());
+                sender.send();
+                it.remove();
+            }
+        }
     }
 }
