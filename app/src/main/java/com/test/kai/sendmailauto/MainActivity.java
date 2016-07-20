@@ -3,31 +3,27 @@ package com.test.kai.sendmailauto;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
-import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.PowerManager;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.DatePicker;
-import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TimePicker;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -39,7 +35,10 @@ public class MainActivity extends AppCompatActivity {
     private ListView mListTasks;
     private PowerManager pm;
     private PowerManager.WakeLock wakeLock;
-    private IntentFilter intentFilter;
+    private IntentFilter alarmFilter;
+    private IntentFilter networkChangeFilter;
+    private boolean isConnected;
+    private boolean isReceiverRegistered = false;
 
     // Storage Permissions
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
@@ -59,6 +58,17 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private final BroadcastReceiver NetworkStateChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.i(TAG, "receive connectivity change");
+            if (isNetworkConnected()) {
+                Log.i(TAG, "network is connected");
+                handleTasks();
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,11 +76,50 @@ public class MainActivity extends AppCompatActivity {
         verifyStoragePermissions(MainActivity.this);
         mTaskManager = new TaskManager(getApplicationContext());
         mListTasks = (ListView)findViewById(R.id.tasklist);
-        intentFilter = new IntentFilter(ACTION_PROCESS_TASK);
+        alarmFilter = new IntentFilter(ACTION_PROCESS_TASK);
+        networkChangeFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
         pm = (PowerManager) getSystemService(POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
-        registerReceiver(mAlarmReceiver, intentFilter);
+        if (!isReceiverRegistered) {
+            registerReceiver(mAlarmReceiver, alarmFilter);
+            registerReceiver(NetworkStateChangeReceiver, networkChangeFilter);
+            isReceiverRegistered = true;
+        }
         handleTasks();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.i(TAG,"onStart()............");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.i(TAG,"onStop()............");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.i(TAG, "onPause()............");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.i(TAG, "onResume()............");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (isReceiverRegistered) {
+            unregisterReceiver(mAlarmReceiver);
+            unregisterReceiver(NetworkStateChangeReceiver);
+            isReceiverRegistered = false;
+        }
     }
 
     @Override
@@ -85,12 +134,25 @@ public class MainActivity extends AppCompatActivity {
         // Handle item selection
         switch (item.getItemId()) {
             case R.id.action_add:
-                showTaskConfigureDialog();
+                showDialog(null);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
+
+    public interface DialogDismissedListener {
+        public void handleDialogDismissed();
+    }
+
+    DialogDismissedListener dialogDismissedListener = new DialogDismissedListener() {
+        @Override
+        public void handleDialogDismissed() {
+            Log.i(TAG, "dialog dismissed");
+            handleTasks();
+        }
+    };
+
     /**
      * Checks if the app has permission to write to device storage
      *
@@ -114,19 +176,27 @@ public class MainActivity extends AppCompatActivity {
 
     public void handleTasks() {
         synchronized (this) {
-            int ret = 0;
             if (!wakeLock.isHeld())
                 wakeLock.acquire();
             Log.i(TAG, "wakelock acquired");
-            mTaskManager.flushAllTimePassedTask();
-            mTaskManager.saveTaskConfigurations();
+            if (isNetworkConnected()) {
+                mTaskManager.flushAllTimePassedTask();
+                Calendar nextTime = mTaskManager.getNextTaskTime();
+                setAlarm(nextTime);
+            }
             updateTaskList();
-            Calendar nextTime = mTaskManager.getNextTaskTime();
-            setAlarm(nextTime);
+            mTaskManager.saveTaskConfigurations();
             if (wakeLock.isHeld())
                 wakeLock.release();
             Log.i(TAG, "wakelock released");
         }
+    }
+
+    public boolean isNetworkConnected() {
+        ConnectivityManager cm = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        isConnected = (activeNetwork != null && activeNetwork.isConnectedOrConnecting());
+        return isConnected;
     }
 
     public void updateTaskList() {
@@ -137,7 +207,8 @@ public class MainActivity extends AppCompatActivity {
         mListTasks.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                showTaskDialog(i);
+                TaskConfiguration task = taskConfigurations.get(i);
+                showDialog(task);
             }
         });
     }
@@ -161,93 +232,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void showTaskConfigureDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        LayoutInflater inflater = getLayoutInflater();
-        builder.setTitle(R.string.dialog_title);
-        builder.setCancelable(false);
-        View mView = inflater.inflate(R.layout.dialog_senddraft, null);
-        final EditText mUsername = (EditText)mView.findViewById(R.id.username);
-        final EditText mPassword = (EditText)mView.findViewById(R.id.password);
-        final EditText mRecipient = (EditText)mView.findViewById(R.id.recipient);
-        final EditText mSubject = (EditText)mView.findViewById(R.id.subject);
-        final EditText mMessage = (EditText)mView.findViewById(R.id.message);
-        final DatePicker datePicker = (DatePicker)mView.findViewById(R.id.datepicker);
-        final TimePicker timePicker = (TimePicker)mView.findViewById(R.id.timepicker);
-        builder.setView(mView);
-        builder.setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                Log.i(TAG, "save selected");
-                String username = String.valueOf(mUsername.getText());
-                String password = String.valueOf(mPassword.getText());
-                String recipient = String.valueOf(mRecipient.getText());
-                String subject = String.valueOf(mSubject.getText());
-                String message = String.valueOf(mMessage.getText());
-                int year = datePicker.getYear();
-                int month = datePicker.getMonth();
-                int day = datePicker.getDayOfMonth();
-                int hour = timePicker.getHour();
-                int minute = timePicker.getMinute();
-                TaskConfiguration taskConfiguration =
-                        mTaskManager.getTaskConfiguration(year, month, day, hour, minute,
-                                username, password, recipient, subject, message);
-                Log.i(TAG, taskConfiguration.toString());
-                mTaskManager.addTaskConfiguration(taskConfiguration);
-                handleTasks();
-            }
-        });
-        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                Log.i(TAG, "cancel selected");
-                dialog.cancel();
-            }
-        });
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    public void showTaskDialog(int taskId) {
-        final int id = taskId;
-        ArrayList<TaskConfiguration> taskConfigurations = mTaskManager.getTaskConfigurations();
-        TaskConfiguration task = taskConfigurations.get(id);
-        Log.i(TAG, task.toString());
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        LayoutInflater inflater = getLayoutInflater();
-        builder.setTitle(R.string.dialog_title);
-        builder.setCancelable(false);
-        View mView = inflater.inflate(R.layout.dialog_senddraft, null);
-        EditText mUsername = (EditText)mView.findViewById(R.id.username);
-        EditText mPassword = (EditText)mView.findViewById(R.id.password);
-        EditText mRecipient = (EditText)mView.findViewById(R.id.recipient);
-        EditText mSubject = (EditText)mView.findViewById(R.id.subject);
-        EditText mMessage = (EditText)mView.findViewById(R.id.message);
-        DatePicker datePicker = (DatePicker)mView.findViewById(R.id.datepicker);
-        TimePicker timePicker = (TimePicker)mView.findViewById(R.id.timepicker);
-        mUsername.setText(task.getUsername());
-        mPassword.setText(task.getPassword());
-        mRecipient.setText(task.getRecipient());
-        mSubject.setText(task.getSubject());
-        mMessage.setText(task.getMessage());
-        datePicker.updateDate(task.getYear(), task.getMonth(), task.getDay());
-        timePicker.setHour(task.getHour());
-        timePicker.setMinute(task.getMinute());
-        builder.setView(mView);
-        builder.setPositiveButton(R.string.delete, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Log.i(TAG, "delete selected");
-                mTaskManager.removeTaskConfiguration(id);
-                handleTasks();
-            }
-        });
-        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Log.i(TAG, "cancel selected");
-                dialogInterface.cancel();
-            }
-        });
-        AlertDialog dialog = builder.create();
-        dialog.show();
+    public void showDialog(TaskConfiguration taskConfiguration) {
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        TaskConifgDialogFragment taskConifgDialogFragment = new TaskConifgDialogFragment();
+        taskConifgDialogFragment.setData(mTaskManager, taskConfiguration);
+        taskConifgDialogFragment.setDismissListener(dialogDismissedListener);
+        taskConifgDialogFragment.show(fragmentManager, "TaskConfigDialogFragment");
     }
 }

@@ -54,7 +54,7 @@ public class TaskManager {
                     String tagName = xpp.getName();
                     switch (eventType) {
                         case XmlPullParser.START_TAG:
-                            Log.d(TAG, "starting tag for " + tagName);
+                            //Log.d(TAG, "starting tag for " + tagName);
                             if (tagName.equalsIgnoreCase("task")) {
                                 taskConfiguration = new TaskConfiguration();
                                 inTask = true;
@@ -65,7 +65,7 @@ public class TaskManager {
                             break;
                         case XmlPullParser.END_TAG:
                             if (inTask) {
-                                Log.d(TAG, "ending tag for " + tagName);
+                                //Log.d(TAG, "ending tag for " + tagName);
                                 if (tagName.equalsIgnoreCase("username")) {
                                     taskConfiguration.setUsername(textValue);
                                 }
@@ -190,11 +190,12 @@ public class TaskManager {
         taskConfigurations.add(taskConfiguration);
     }
 
-    public void removeTaskConfiguration(int index) {
-        taskConfigurations.remove(index);
+    public void removeTaskConfiguration(TaskConfiguration taskConfiguration) {
+        taskConfigurations.remove(taskConfiguration);
     }
 
     public void saveTaskConfigurations() {
+        Log.i(TAG, "saveTaskConfigurations called");
         if (isExternalStorageWritable()) {
             File file = new File(mContext.getExternalFilesDir(null), TASK_DATA_XML);
             try {
@@ -248,7 +249,7 @@ public class TaskManager {
                 e.printStackTrace();
             }
         } else {
-            Log.i(TAG, "external storage is not readable");
+            Log.i(TAG, "external storage is not writable");
         }
     }
 

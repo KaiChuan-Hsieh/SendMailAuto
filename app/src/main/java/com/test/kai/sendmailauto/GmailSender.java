@@ -1,8 +1,6 @@
 package com.test.kai.sendmailauto;
 
 import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.PowerManager;
 import android.util.Log;
 
