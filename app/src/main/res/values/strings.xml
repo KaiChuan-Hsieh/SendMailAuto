@@ -10,4 +10,8 @@
     <string name="cancel">Cancel</string>
     <string name="action_add">ADD</string>
     <string name="delete">Delete</string>
+    <string name="no_google_play_service">The app requires Google Play Services. Please install Google Play Services on your device and relaunch this app.</string>
+    <string name="no_external_storage_permission">The app requires Read/Write external storage permission. Please agree the permission request.</string>
+    <string name="no_network_available">No network connection available.</string>
+    <string name="no_get_account_permission">The app requires get account, Please agree the permission request</string>
 </resources>

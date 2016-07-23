@@ -66,12 +66,6 @@ public class TaskManager {
                         case XmlPullParser.END_TAG:
                             if (inTask) {
                                 //Log.d(TAG, "ending tag for " + tagName);
-                                if (tagName.equalsIgnoreCase("username")) {
-                                    taskConfiguration.setUsername(textValue);
-                                }
-                                if (tagName.equalsIgnoreCase("password")) {
-                                    taskConfiguration.setPassword(textValue);
-                                }
                                 if (tagName.equalsIgnoreCase("recipient")) {
                                     taskConfiguration.setRecipient(textValue);
                                 }
@@ -165,8 +159,7 @@ public class TaskManager {
     }
 
     public TaskConfiguration getTaskConfiguration(int year, int month, int day,
-                                                  int hour, int minute, String username,
-                                                  String password, String recipient,
+                                                  int hour, int minute, String recipient,
                                                   String subject, String message) {
         TaskConfiguration taskConfiguration = new TaskConfiguration();
         taskConfiguration.setYear(year);
@@ -174,8 +167,6 @@ public class TaskManager {
         taskConfiguration.setDay(day);
         taskConfiguration.setHour(hour);
         taskConfiguration.setMinute(minute);
-        taskConfiguration.setUsername(username);
-        taskConfiguration.setPassword(password);
         taskConfiguration.setRecipient(recipient);
         taskConfiguration.setSubject(subject);
         taskConfiguration.setMessage(message);
@@ -206,12 +197,6 @@ public class TaskManager {
                 xmlSerializer.startDocument("UTF-8", true);
                 for (TaskConfiguration taskConfiguration : taskConfigurations) {
                     xmlSerializer.startTag("", "task");
-                    xmlSerializer.startTag("", "username");
-                    xmlSerializer.text(taskConfiguration.getUsername());
-                    xmlSerializer.endTag("", "username");
-                    xmlSerializer.startTag("", "password");
-                    xmlSerializer.text(taskConfiguration.getPassword());
-                    xmlSerializer.endTag("", "password");
                     xmlSerializer.startTag("", "recipient");
                     xmlSerializer.text(taskConfiguration.getRecipient());
                     xmlSerializer.endTag("", "recipient");
@@ -259,7 +244,7 @@ public class TaskManager {
         TaskConfiguration minTask = null;
         for (TaskConfiguration t : taskConfigurations) {
             Calendar curTask = Calendar.getInstance();
-            curTask.set(t.getYear(), t.getMonth(), t.getDay(), t.getHour(), t.getMinute());
+            curTask.set(t.getYear(), t.getMonth(), t.getDay(), t.getHour(), t.getMinute(), 0);
             if (curTask.compareTo(current)<diff) {
                 minTask = t;
                 diff = curTask.compareTo(current);
@@ -267,24 +252,27 @@ public class TaskManager {
         }
         if (minTask!=null) {
             current.set(minTask.getYear(), minTask.getMonth(), minTask.getDay(),
-                    minTask.getHour(), minTask.getMinute());
+                    minTask.getHour(), minTask.getMinute(), 0);
         }
         return current;
     }
 
-    public void flushAllTimePassedTask() {
+    public ArrayList<TaskConfiguration> getTimePassedTaskList() {
+        Log.i(TAG, "getTimePassedTaskList in");
         Calendar current = Calendar.getInstance();
-        for (Iterator<TaskConfiguration> it=taskConfigurations.iterator(); it.hasNext();) {
+        ArrayList<TaskConfiguration> timePassedTaskList =
+                new ArrayList<>();
+        Iterator<TaskConfiguration> it = taskConfigurations.iterator();
+        while (it.hasNext()) {
             TaskConfiguration t = it.next();
             Calendar curTask = Calendar.getInstance();
             curTask.set(t.getYear(), t.getMonth(), t.getDay(), t.getHour(), t.getMinute());
-            if (curTask.compareTo(current)<=0) {
-                //Time is passed
-                GmailSender sender = new GmailSender(mContext, t.getUsername(), t.getPassword(),
-                        t.getRecipient(), t.getSubject(), t.getMessage());
-                sender.send();
+            if (curTask.compareTo(current) <= 0) {
+                timePassedTaskList.add(t);
                 it.remove();
             }
         }
+
+        return timePassedTaskList;
     }
 }

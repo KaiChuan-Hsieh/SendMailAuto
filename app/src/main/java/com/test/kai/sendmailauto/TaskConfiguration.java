@@ -10,8 +10,6 @@ public class TaskConfiguration {
     private int day;
     private int hour;
     private int minute;
-    private String username;
-    private String password;
     private String recipient;
     private String subject;
     private String message;
@@ -30,14 +28,6 @@ public class TaskConfiguration {
 
     public void setMinute(int minute) {
         this.minute = minute;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public void setRecipient(String recipient) {
@@ -71,14 +61,6 @@ public class TaskConfiguration {
 
     public int getMinute() {
         return minute;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
     }
 
     public String getRecipient() {

@@ -1,18 +1,17 @@
 package com.test.kai.sendmailauto;
 
-import android.content.Context;
-import android.os.PowerManager;
 import android.util.Log;
 
-import java.net.InetAddress;
+import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64;
+import com.google.api.services.gmail.Gmail;
+import com.google.api.services.gmail.model.Message;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Properties;
 
-import javax.mail.Address;
-import javax.mail.Message;
 import javax.mail.MessagingException;
-import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
-import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
@@ -20,32 +19,87 @@ import javax.mail.internet.MimeMessage;
  * Created by kai-chuan on 7/18/16.
  */
 public class GmailSender {
-    final private String TAG = "GmailSender";
-    private String username;
-    private String password;
-    private String recipient;
-    private String subject;
-    private String content;
-    private PowerManager pm;
-    private PowerManager.WakeLock wakeLock;
-    private Context mContext;
+    private static final String TAG = "GmailSender";
 
-    public GmailSender (Context context, String user, String pass, String recv, String sub, String con) {
-        mContext = context;
-        username = user;
-        password = pass;
-        recipient = recv;
-        subject = sub;
-        content = con;
+    /**
+     * Create a MimeMessage using the parameters provided.
+     *
+     * @param to email address of the receiver
+     * @param from email address of the sender, the mailbox account
+     * @param subject subject of the email
+     * @param bodyText body text of the email
+     * @return the MimeMessage to be used to send email
+     * @throws MessagingException
+     */
+    public static MimeMessage createEmail(String to,
+                                          String from,
+                                          String subject,
+                                          String bodyText)
+            throws MessagingException {
+        Properties props = new Properties();
+        Session session = Session.getDefaultInstance(props, null);
+
+        MimeMessage email = new MimeMessage(session);
+
+        email.setFrom(new InternetAddress(from));
+        email.addRecipient(javax.mail.Message.RecipientType.TO,
+                new InternetAddress(to));
+        email.setSubject(subject);
+        email.setText(bodyText);
+        return email;
     }
 
+    /**
+     * Create a message from an email.
+     *
+     * @param emailContent Email to be set to raw of message
+     * @return a message containing a base64url encoded email
+     * @throws IOException
+     * @throws MessagingException
+     */
+    public static Message createMessageWithEmail(MimeMessage emailContent)
+            throws MessagingException, IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        emailContent.writeTo(buffer);
+        byte[] bytes = buffer.toByteArray();
+        String encodedEmail = Base64.encodeBase64URLSafeString(bytes);
+        Message message = new Message();
+        message.setRaw(encodedEmail);
+        return message;
+    }
+
+    /**
+     * Send an email from the user's mailbox to its recipient.
+     *
+     * @param service Authorized Gmail API instance.
+     * @param userId User's email address. The special value "me"
+     * can be used to indicate the authenticated user.
+     * @param emailContent Email to be sent.
+     * @return The sent message
+     * @throws MessagingException
+     * @throws IOException
+     */
+    public static Message sendMessage(Gmail service,
+                                      String userId,
+                                      MimeMessage emailContent)
+            throws MessagingException, IOException {
+        Message message = createMessageWithEmail(emailContent);
+        message = service.users().messages().send(userId, message).execute();
+
+        Log.i(TAG, "Message id: " + message.getId());
+        Log.i(TAG, (message.toPrettyString()));
+        return message;
+    }
+    /*
     public void send() {
         pm = (PowerManager) mContext.getSystemService(mContext.POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
         Thread thr = new Thread(sendThread);
         thr.start();
     }
+    */
 
+    /*
     private void sendMailViaTLS() {
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
@@ -116,4 +170,5 @@ public class GmailSender {
             Log.i(TAG, "mail send end");
         }
     };
+    */
 }
