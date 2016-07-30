@@ -14,4 +14,6 @@
     <string name="no_external_storage_permission">The app requires Read/Write external storage permission. Please agree the permission request.</string>
     <string name="no_network_available">No network connection available.</string>
     <string name="no_get_account_permission">The app requires get account, Please agree the permission request</string>
+    <string name="first_subject">Thanks for using AutoMailer</string>
+    <string name="first_content">You are able to send mail from your account by AutoMailer</string>
 </resources>

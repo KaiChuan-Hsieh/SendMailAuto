@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity
     private static final int REQUEST_ACCOUNT_PICKER = 1003;
     private static final int REQUEST_AUTHORIZATION = 1004;
     private static final String PREF_ACCOUNT_NAME = "accountName";
+    private static final String PREF_FIRST_USED = "firstUsed";
     private static final String[] SCOPES = {
             GmailScopes.GMAIL_COMPOSE,
             GmailScopes.GMAIL_SEND
@@ -140,6 +141,20 @@ public class MainActivity extends AppCompatActivity
         twakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG+"-"+"thread");
 
         handleTasks();
+        if (isFirstTimeOpen()) {
+            Log.i(TAG, "The first time app start");
+            String accountName = getPreferences(Context.MODE_PRIVATE)
+                    .getString(PREF_ACCOUNT_NAME, null);
+            String subject = getResources().getString(R.string.first_subject);
+            String message = getResources().getString(R.string.first_content);
+            Calendar current = Calendar.getInstance();
+            TaskConfiguration taskConfiguration = mTaskManager.getTaskConfiguration(
+                    current.get(Calendar.YEAR), current.get(Calendar.MONTH), current.get(Calendar.DAY_OF_MONTH),
+                    current.get(Calendar.HOUR), current.get(Calendar.MINUTE), accountName,
+                    subject, message);
+            mTaskManager.addTaskConfiguration(taskConfiguration);
+            handleTasks();
+        }
     }
 
     @Override
@@ -537,5 +552,20 @@ public class MainActivity extends AppCompatActivity
                 mOutputText.setText("Request cancelled.");
             }
         }
+    }
+
+    private boolean isFirstTimeOpen() {
+        Boolean firstUsed = getPreferences(Context.MODE_PRIVATE)
+                .getBoolean(PREF_FIRST_USED, true);
+
+        if (firstUsed) {
+            SharedPreferences settings =
+                    getPreferences(Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = settings.edit();
+            editor.putBoolean(PREF_FIRST_USED, false);
+            editor.apply();
+        }
+
+        return firstUsed;
     }
 }
