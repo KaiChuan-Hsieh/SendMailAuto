@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SendMailAuto</string>
+    <string name="app_name">AutoMailer</string>
     <string name="username">username</string>
     <string name="password">password</string>
     <string name="recipient">recipient@gmail.com</string>
@@ -8,7 +8,7 @@
     <string name="dialog_title">Configuration</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
-    <string name="action_add">ADD</string>
+    <string name="action_add">+</string>
     <string name="delete">Delete</string>
     <string name="no_google_play_service">The app requires Google Play Services. Please install Google Play Services on your device and relaunch this app.</string>
     <string name="no_external_storage_permission">The app requires Read/Write external storage permission. Please agree the permission request.</string>

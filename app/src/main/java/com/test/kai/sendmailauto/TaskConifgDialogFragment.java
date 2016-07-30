@@ -3,14 +3,17 @@ package com.test.kai.sendmailauto;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.TimePicker;
 
 /**
@@ -25,6 +28,7 @@ public class TaskConifgDialogFragment extends DialogFragment {
     private TimePicker timePicker;
     private TaskManager mTaskManager;
     private TaskConfiguration mTaskConfiguration;
+    private TextView titleText;
     MainActivity.DialogDismissedListener mDismissListener;
 
     @Override
@@ -35,7 +39,7 @@ public class TaskConifgDialogFragment extends DialogFragment {
         LayoutInflater inflater = getActivity().getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_senddraft, null);
         builder.setView(dialogView);
-        builder.setTitle("Configuration");
+        titleText = (TextView)dialogView.findViewById(R.id.title);
         mRecipient = (EditText)dialogView.findViewById(R.id.recipient);
         mSubject = (EditText)dialogView.findViewById(R.id.subject);
         mMessage = (EditText)dialogView.findViewById(R.id.message);
@@ -61,6 +65,14 @@ public class TaskConifgDialogFragment extends DialogFragment {
             builder.setNegativeButton(R.string.cancel, cancelClickListener);
         }
         return builder.create();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        ((AlertDialog) getDialog()).getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(getResources().getColor(R.color.colorSecondary));
+        ((AlertDialog) getDialog()).getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(getResources().getColor(R.color.colorSecondary));
+        ((AlertDialog) getDialog()).getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(getResources().getColor(R.color.colorSecondary));
     }
 
     @Override
