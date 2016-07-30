@@ -18,7 +18,7 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
-    <LinearLayout
+    <RelativeLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -44,6 +44,7 @@
             android:layout_marginLeft="7dp"
             android:layout_marginRight="7dp"
             android:layout_marginBottom="4dp"
+            android:layout_below="@id/recipient"
             android:textSize="15dp"
             android:hint="@string/subject"/>
         <EditText
@@ -54,27 +55,44 @@
             android:layout_marginLeft="7dp"
             android:layout_marginRight="7dp"
             android:layout_marginBottom="4dp"
+            android:layout_below="@id/subject"
             android:textSize="15dp"
             android:hint="@string/message"/>
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/datatimeswitch"
+            android:layout_gravity="center"
+            android:textOn="date"
+            android:textOff="time"
+            android:showText="true"
+            android:layout_below="@id/message"
+            android:layout_centerHorizontal="true"
+            android:checked="true"/>
+
         <DatePicker
             android:id="@+id/datepicker"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:layout_below="@id/datatimeswitch"
             android:datePickerMode="spinner"
             android:calendarViewShown="false"
-            android:scaleX="0.8">
+            android:layout_centerHorizontal="true">
 
         </DatePicker>
+
         <TimePicker
             android:id="@+id/timepicker"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:layout_below='@id/datatimeswitch'
             android:timePickerMode="spinner"
-            android:scaleX="0.8">
+            android:visibility="invisible"
+            android:layout_centerHorizontal="true">
 
         </TimePicker>
-    </LinearLayout>
+    </RelativeLayout>
     </ScrollView>
 </LinearLayout>

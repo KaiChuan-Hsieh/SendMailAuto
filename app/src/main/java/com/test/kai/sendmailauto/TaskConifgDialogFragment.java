@@ -11,8 +11,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.TimePicker;
 
@@ -28,6 +30,7 @@ public class TaskConifgDialogFragment extends DialogFragment {
     private TimePicker timePicker;
     private TaskManager mTaskManager;
     private TaskConfiguration mTaskConfiguration;
+    private Switch mDateTimeSwitch;
     private TextView titleText;
     MainActivity.DialogDismissedListener mDismissListener;
 
@@ -43,8 +46,21 @@ public class TaskConifgDialogFragment extends DialogFragment {
         mRecipient = (EditText)dialogView.findViewById(R.id.recipient);
         mSubject = (EditText)dialogView.findViewById(R.id.subject);
         mMessage = (EditText)dialogView.findViewById(R.id.message);
+        mDateTimeSwitch = (Switch)dialogView.findViewById(R.id.datatimeswitch);
         datePicker = (DatePicker)dialogView.findViewById(R.id.datepicker);
         timePicker = (TimePicker)dialogView.findViewById(R.id.timepicker);
+        mDateTimeSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (b) {
+                    datePicker.setVisibility(View.VISIBLE);
+                    timePicker.setVisibility(View.INVISIBLE);
+                } else {
+                    datePicker.setVisibility(View.INVISIBLE);
+                    timePicker.setVisibility(View.VISIBLE);
+                }
+            }
+        });
         if (mTaskConfiguration!=null) {
             mRecipient.setText(mTaskConfiguration.getRecipient());
             mSubject.setText(mTaskConfiguration.getSubject());
