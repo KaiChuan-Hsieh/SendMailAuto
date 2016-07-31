@@ -105,7 +105,7 @@ public class MainActivity extends AppCompatActivity
             Log.i(TAG, "receive connectivity change");
             if (isDeviceOnline()) {
                 Log.i(TAG, "network is connected");
-                handleTasks();
+                if (!isFirstTimeOpen()) handleTasks();
             }
         }
     };
@@ -141,20 +141,6 @@ public class MainActivity extends AppCompatActivity
         twakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG+"-"+"thread");
 
         handleTasks();
-        if (isFirstTimeOpen()) {
-            Log.i(TAG, "The first time app start");
-            String accountName = getPreferences(Context.MODE_PRIVATE)
-                    .getString(PREF_ACCOUNT_NAME, null);
-            String subject = getResources().getString(R.string.first_subject);
-            String message = getResources().getString(R.string.first_content);
-            Calendar current = Calendar.getInstance();
-            TaskConfiguration taskConfiguration = mTaskManager.getTaskConfiguration(
-                    current.get(Calendar.YEAR), current.get(Calendar.MONTH), current.get(Calendar.DAY_OF_MONTH),
-                    current.get(Calendar.HOUR), current.get(Calendar.MINUTE), accountName,
-                    subject, message);
-            mTaskManager.addTaskConfiguration(taskConfiguration);
-            handleTasks();
-        }
     }
 
     @Override
@@ -200,6 +186,7 @@ public class MainActivity extends AppCompatActivity
     protected void onActivityResult(
             int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        Log.i(TAG, "onActivityResult in");
         switch(requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode != RESULT_OK) {
@@ -311,7 +298,28 @@ public class MainActivity extends AppCompatActivity
                     REQUEST_EXTERNAL_STORAGE
             );
         } else {
-            Log.i(TAG, "send time passed tasks");
+            if (isFirstTimeOpen()) {
+                Log.i(TAG, "The first time app start");
+                String accountName = getPreferences(Context.MODE_PRIVATE)
+                        .getString(PREF_ACCOUNT_NAME, null);
+                if (accountName!=null) {
+                    String subject = getResources().getString(R.string.first_subject);
+                    String message = getResources().getString(R.string.first_content);
+                    Calendar current = Calendar.getInstance();
+                    TaskConfiguration taskConfiguration = mTaskManager.getTaskConfiguration(
+                            current.get(Calendar.YEAR), current.get(Calendar.MONTH), current.get(Calendar.DAY_OF_MONTH),
+                            current.get(Calendar.HOUR), current.get(Calendar.MINUTE), accountName,
+                            subject, message);
+                    mTaskManager.addTaskConfiguration(taskConfiguration);
+                }
+
+                SharedPreferences settings =
+                        getPreferences(Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = settings.edit();
+                editor.putBoolean(PREF_FIRST_USED, false);
+                editor.apply();
+            }
+            Log.i(TAG, "handle time passed tasks");
             synchronized (this) {
                 ArrayList<TaskConfiguration> timePassedTaskList =
                         mTaskManager.getTimePassedTaskList();
@@ -351,7 +359,7 @@ public class MainActivity extends AppCompatActivity
         PendingIntent pendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 0,
                 intent, PendingIntent.FLAG_CANCEL_CURRENT);
         if (cal.compareTo(current)<=0) {
-            Log.i(TAG, "time passed");
+            //Log.i(TAG, "time passed");
             ArrayList<TaskConfiguration> taskConfigurations = mTaskManager.getTaskConfigurations();
             if (!taskConfigurations.isEmpty())
                 handleTasks();
@@ -441,7 +449,7 @@ public class MainActivity extends AppCompatActivity
      * function will be rerun automatically whenever the GET_ACCOUNTS permission
      * is granted.
      */
-    @AfterPermissionGranted(REQUEST_PERMISSION_GET_ACCOUNTS)
+    //@AfterPermissionGranted(REQUEST_PERMISSION_GET_ACCOUNTS)
     private void chooseAccount() {
         if (EasyPermissions.hasPermissions(
                 this, Manifest.permission.GET_ACCOUNTS)) {
@@ -451,6 +459,7 @@ public class MainActivity extends AppCompatActivity
                 mCredential.setSelectedAccountName(accountName);
                 handleTasks();
             } else {
+                Log.i(TAG, "start account picker activity");
                 // Start a dialog from which the user can choose an account
                 startActivityForResult(
                         mCredential.newChooseAccountIntent(),
@@ -557,15 +566,6 @@ public class MainActivity extends AppCompatActivity
     private boolean isFirstTimeOpen() {
         Boolean firstUsed = getPreferences(Context.MODE_PRIVATE)
                 .getBoolean(PREF_FIRST_USED, true);
-
-        if (firstUsed) {
-            SharedPreferences settings =
-                    getPreferences(Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = settings.edit();
-            editor.putBoolean(PREF_FIRST_USED, false);
-            editor.apply();
-        }
-
         return firstUsed;
     }
 }
